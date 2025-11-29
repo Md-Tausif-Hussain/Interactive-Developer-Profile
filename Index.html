@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Md Tausif Hussain | Interactive Developer Profile</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js for 3D Visual -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js for Auditory/Haptic Feedback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <!-- Chosen Palette: Slate & Indigo (Warm Neutrals with Tech Blue) -->
+    <!-- Application Structure Plan: 
+         The app is designed as a "Developer Insight Dashboard".
+         1. Header/Hero: Immediate identification and key "North Star" metrics (CGPA, Repos). Includes an interactive Three.js 3D element.
+         2. Skills Analysis: Uses a Radar chart to visualize the balance between languages and concepts (DSA vs Dev), now prominently featuring soft skills (Collaboration/Communication) inspired by LinkedIn/CV data.
+         3. Language Breakdown: A Doughnut chart to visualize technical diversity.
+         4. Journey Map: A vertical timeline for Education and Goals, providing context to the stats.
+         5. New Section: Project Showcase, with collapsible descriptions for low cognitive load.
+         6. New Section: Achievements & Certifications, displaying competitive ranks and training via dynamic cards, updated with IIT Madras specific data.
+         7. Connect Hub: A dedicated footer for actionable outgoing links.
+         Rationale: Recruiters need to digest "Who is he?", "What can he do?", and "How has he grown?" in seconds. 
+         This non-linear dashboard allows them to jump to the data point that matters most to them.
+    -->
+
+    <style>
+        /* Custom Chart Container Styling to meet constraints */
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Constraint: Max width for readability */
+            height: 320px;    /* Constraint: Controlled height */
+            max-height: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            /* Responsive height adjustment */
+            height: 30vh; 
+            min-height: 250px;
+        }
+
+        /* 3D Canvas Container */
+        #three-d-container {
+            width: 100%;
+            height: 250px;
+            max-height: 300px;
+            margin: 0 auto;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            cursor: grab; /* Indicate drag capability */
+        }
+        #three-d-container.grabbing {
+            cursor: grabbing;
+        }
+        
+        /* === UI/UX IMPROVEMENT: Smooth Collapse/Expand Transition (Journey) === */
+        .future-goal-wrapper {
+            overflow: hidden;
+            /* Using a smooth transition for max-height and opacity */
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease-in-out;
+        }
+
+        /* === UI/UX IMPROVEMENT: Smooth Collapse/Expand Transition (Project Details) === */
+        .project-details {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Utility for hiding elements - kept for fallback/general use */
+        .hidden-content {
+            display: none;
+        }
+
+        /* Smooth transitions */
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 300ms;
+        }
+        
+        /* === Fluid Progress Bar Animation === */
+        .progress-bar-fill {
+            transition: width 1s ease-out;
+        }
+        
+        /* === Haptic Button Animation Class (Connect Hub) === */
+        .haptic-button-effect:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); 
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        
+        /* === Hero Text Animation Classes === */
+        .pulse-on-click {
+            transition: transform 0.1s, filter 0.1s;
+        }
+        .pulse-on-click.active {
+            transform: scale(1.01);
+            filter: brightness(1.05);
+        }
+
+        /* Thanos Snap/Dusting Animation */
+        @keyframes snap-disintegrate {
+            to {
+                transform: translateY(100vh) rotate(50deg);
+                opacity: 0;
+            }
+        }
+
+        .particle {
+            position: absolute;
+            opacity: 1;
+            /* Animation properties will be set inline by JS */
+        }
+
+
+        body {
+            background-color: #f8fafc; /* Slate 50 */
+            color: #334155; /* Slate 700 */
+            font-family: 'Inter', sans-serif; /* Set to Inter as preferred font */
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Visualization & Content Choices:
+         1. Profile Header -> Inform -> Text & Metric Cards -> No interaction -> Immediate Context -> HTML/Tailwind.
+         2. 3D Hero Element -> Engage -> Three.js Canvas (Interactive Geometry) -> Mouse movement rotates the element, animation applies radial vertex displacement (Exploding/Reassembling) -> **UPDATED: Click/Drag controls manual rotation, overriding passive mouse tilt.** -> Three.js.
+         3. Skill Proficiency -> Compare -> Radar Chart (Updated to include OOPS, Problem Solving, Team Collaboration, Communication) -> Hover to see score -> Shows balanced skillset (DSA vs Dev) -> Chart.js.
+         4. Language Mix -> Inform -> Doughnut Chart / **NEW: Animated Progress Bars** -> Click doughnut / Bar hover -> Shows versatility in a fluid, responsive way -> Chart.js / HTML/CSS/JS.
+         5. Education Timeline -> Change -> Vertical List -> Smooth Toggle -> Chronological context -> HTML/Tailwind/JS (Improved UX).
+         6. Project Showcase -> Organize -> Card Layout with Collapsible Detail -> Click to expand/collapse details (low friction) -> Provides project evidence -> HTML/Tailwind/JS.
+         7. Achievements & Certifications, displaying competitive ranks and training via dynamic cards, updated with IIT Madras specific data.
+         8. Connect Hub: A dedicated footer for actionable outgoing links, now with simulated HAPTIC feedback.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Navigation / Header -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <!-- REMOVED 'MTH' AND BOLDED/STYLED THE TITLE -->
+                    <span class="text-2xl font-extrabold text-indigo-700 tracking-wider">
+                        <span class="font-extrabold text-slate-800">Interactive</span> Developer Profile
+                    </span>
+                </div>
+                <div class="items-center space-x-2 sm:space-x-4 hidden sm:flex">
+                    <button onclick="scrollToSection('overview')" class="px-3 py-2 rounded-full text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all">Overview</button>
+                    <button onclick="scrollToSection('skills')" class="px-3 py-2 rounded-full text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all">Skills Data</button>
+                    <button onclick="scrollToSection('projects')" class="px-3 py-2 rounded-full text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all">Projects</button>
+                    <button onclick="scrollToSection('journey')" class="px-3 py-2 rounded-full text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all">Journey</button>
+                </div>
+                <!-- Mobile Menu Button - simple responsive version -->
+                <div class="flex items-center sm:hidden">
+                    <button id="mobile-menu-toggle" class="p-2 rounded-md text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none">
+                        &#x2261;
+                    </button>
+                </div>
+            </div>
+        </div>
+         <!-- Mobile Menu Content -->
+        <div id="mobile-menu" class="sm:hidden hidden px-2 pt-2 pb-3 space-y-1">
+            <button onclick="scrollToSection('overview')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Overview</button>
+            <button onclick="scrollToSection('skills')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Skills Data</button>
+            <button onclick="scrollToSection('projects')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Projects</button>
+            <button onclick="scrollToSection('journey')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Journey</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full space-y-16">
+
+        <!-- Section 1: Hero & Key Metrics -->
+        <section id="overview" class="space-y-8">
+            <div class="bg-white overflow-hidden shadow-xl rounded-2xl border-t-8 border-indigo-600">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 p-6 sm:p-10 gap-8">
+                    <!-- Left Column: Title and Bio (Now Clickable) -->
+                    <div id="hero-text-block" class="flex flex-col justify-center text-center md:text-left pulse-on-click cursor-pointer relative" onclick="handleHeroClick(this)">
+                        <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900 leading-tight">Md Tausif Hussain</h1>
+                        <p class="mt-2 text-xl text-slate-600 font-light">BCA Graduate | Aspiring Software Developer | DSA Enthusiast</p>
+                        <p class="mt-4 text-sm text-slate-500 italic">"Building robust solutions through Data Structures & Algorithms, driven by academic excellence and collaborative spirit."</p>
+                        <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                Open to Work
+                            </span>
+                            <!-- UPDATED STATUS BADGE -->
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                                BCA Graduate (2025)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: 3D Canvas -->
+                    <div class="flex items-center justify-center">
+                        <div id="three-d-container" class="shadow-inner bg-slate-50">
+                            <!-- Three.js Canvas is inserted here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Context Paragraph -->
+            <div class="bg-indigo-50 rounded-lg p-5 border border-indigo-200 shadow-inner">
+                <p class="text-sm text-indigo-800">
+                    <span class="font-bold">Report Context:</span> This section aggregates key performance metrics from my academic and GitHub profiles. It provides a snapshot of my current standing as a developer, highlighting academic consistency (CGPA) and community engagement (GitHub stats).
+                </p>
+            </div>
+
+            <!-- Metrics Grid (Improved Hover Effect) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <!-- Metric 1 -->
+                <div class="bg-white overflow-hidden rounded-xl p-6 border border-slate-200 transition-all hover:shadow-xl hover:border-indigo-400 transform hover:scale-[1.02]">
+                    <dt class="text-sm font-medium text-slate-500">CGPA (UEMK)</dt>
+                    <dd class="mt-1 text-4xl font-extrabold text-indigo-600">8.81</dd>
+                </div>
+                <!-- Metric 2 -->
+                <div class="bg-white overflow-hidden rounded-xl p-6 border border-slate-200 transition-all hover:shadow-xl hover:border-indigo-400 transform hover:scale-[1.02]">
+                    <dt class="text-sm font-medium text-slate-500">GitHub Repos</dt>
+                    <dd class="mt-1 text-4xl font-extrabold text-indigo-600">20</dd>
+                </div>
+                <!-- Metric 3 -->
+                <div class="bg-white overflow-hidden rounded-xl p-6 border border-slate-200 transition-all hover:shadow-xl hover:border-indigo-400 transform hover:scale-[1.02]">
+                    <dt class="text-sm font-medium text-slate-500">Profile Stars</dt>
+                    <dd class="mt-1 text-4xl font-extrabold text-indigo-600">19</dd>
+                </div>
+                <!-- Metric 4 (Updated count from 5 to 8) -->
+                <div class="bg-white overflow-hidden rounded-xl p-6 border border-slate-200 transition-all hover:shadow-xl hover:border-indigo-400 transform hover:scale-[1.02]">
+                    <dt class="text-sm font-medium text-slate-500">Total Certifications</dt>
+                    <dd class="mt-1 text-4xl font-extrabold text-indigo-600">8</dd>
+                    <div class="text-xs text-slate-400 mt-1">NPTEL, Infosys, etc.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Data Visualizations (Skills & Languages) -->
+        <section id="skills" class="space-y-6">
+            <h2 class="text-3xl font-bold text-slate-900 pb-3 border-b-2 border-indigo-100">Technical Competency Analysis</h2>
+            
+            <!-- Context Paragraph -->
+            <p class="text-slate-600 max-w-4xl">
+                The following visualizations break down my technical skillset. The <strong>Proficiency Radar</strong> maps my confidence levels across core technical and conceptual domains, while the <strong>Codebase Composition</strong> chart illustrates the variety of technologies I employ in my repositories. Click on the Doughnut chart segments to read an analyst's note on my focus for that technology.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
+                
+                <!-- Chart 1: Proficiency Radar (Updated Labels) -->
+                <div class="bg-white shadow-xl rounded-xl p-4 flex flex-col lg:col-span-2">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4 text-center">Core Proficiency Radar (Hard & Soft Skills)</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="skillsRadarChart"></canvas>
+                    </div>
+                    <p class="text-xs text-center text-slate-400 mt-2">Score represents estimated proficiency out of 100.</p>
+                </div>
+                
+                <!-- Card for Soft Skills Emphasis (Inspired by LinkedIn focus) -->
+                <div class="bg-indigo-50 border-t-4 border-indigo-500 p-6 rounded-xl shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="text-3xl text-indigo-600 mb-2">&#x1F465;</div> <!-- Group/Collaboration Icon -->
+                        <h3 class="text-lg font-bold text-slate-900">Collaboration Focus</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            A strong emphasis on **Team Collaboration** and **Communication** ensures seamless integration into dynamic development environments and effective cross-functional work.
+                        </p>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">Communication</span>
+                        <span class="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">Teamwork</span>
+                        <span class="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">Soft Skills Certified</span>
+                    </div>
+                </div>
+
+
+                <!-- Chart 2: Language Distribution -->
+                <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                    <div class="bg-white shadow-xl rounded-xl p-4 flex flex-col">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4 text-center">Codebase Composition (Estimated %)</h3>
+                        
+                        <!-- Responsive Layout for Composition -->
+                        <div id="language-chart-wrapper" class="md:block hidden">
+                            <!-- Desktop: Doughnut Chart -->
+                            <div class="chart-wrapper">
+                                <canvas id="languageDoughnutChart"></canvas>
+                            </div>
+                            <p class="text-xs text-center text-slate-400 mt-2">Click a segment to get a focused insight.</p>
+                        </div>
+
+                        <div id="language-bars-wrapper" class="md:hidden pt-4 px-2">
+                            <!-- Mobile: Fluid Progress Bars (Injected by JS) -->
+                            <div id="language-bars"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Dynamic Text Block based on interactions (Now side-by-side with chart) -->
+                    <div id="skill-insight" class="bg-blue-100 border-l-4 border-blue-600 p-5 rounded-r-xl shadow transition-all flex flex-col justify-center">
+                        <div class="flex">
+                            <div class="flex-shrink-0 pt-0.5">
+                                <span class="text-blue-600 text-2xl font-bold">&#10003;</span> <!-- Checkmark/Info Icon Unicode -->
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-base text-blue-900">
+                                    <strong>Analyst Note:</strong> My strongest focus is currently on <span class="font-bold">Java</span> and <span class="font-bold">DSA</span>, which aligns with my goal of solving complex algorithmic problems. Python is utilized primarily for scripting and automation tasks. Click any segment on the doughnut chart for technology-specific insights.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 3: Personal Projects Showcase -->
+        <section id="projects" class="space-y-6">
+            <h2 class="text-3xl font-bold text-slate-900 pb-3 border-b-2 border-indigo-100">Personal Project Showcase</h2>
+            
+            <!-- Context Paragraph -->
+            <p class="text-slate-600 max-w-4xl">
+                These core projects demonstrate my ability to apply practical programming skills, focusing on real-world utility and software development principles (OOPS, clean design). Click on the project name to view the detailed development insights.
+            </p>
+
+            <div id="projects-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <!-- Project cards injected here by JS -->
+            </div>
+        </section>
+
+        <!-- Section 4: Certifications and Competitive Ranks -->
+        <section id="achievements" class="space-y-6">
+            <h2 class="text-3xl font-bold text-slate-900 pb-3 border-b-2 border-indigo-100">Certifications & Competitive Ranks</h2>
+            
+            <!-- Context Paragraph -->
+            <p class="text-slate-600 max-w-4xl">
+                Verifiable achievements that reflect dedication to continuous learning and competitive excellence. This section highlights commitment to both foundational skills and real-world contest performance.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                <!-- Competitive Ranks -->
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">AIR 72</h3>
+                    <p class="text-sm text-yellow-700">Coding NINJA SLAYGROUND 2.0</p>
+                </div>
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">AIR 695</h3>
+                    <p class="text-sm text-yellow-700">Coding Ninja Codekaze 24</p>
+                </div>
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">Rank 4</h3>
+                    <p class="text-sm text-yellow-700">Unstop Practice Card (Coding Streak)</p>
+                </div>
+
+                <!-- Certifications (Updated) -->
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">Programming Using Java</h3>
+                    <p class="text-sm text-green-700">Infosys | Springboard</p>
+                </div>
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">DSA with Java</h3>
+                    <p class="text-sm text-green-700">Apna College</p>
+                </div>
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">The Joy of Computing Using Python</h3>
+                    <p class="text-sm text-green-700">NPTEL | IIT Madras</p> <!-- UPDATED: Added IIT Madras -->
+                </div>
+                 <!-- New Certifications -->
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">Operating System Fundamentals</h3>
+                    <p class="text-sm text-green-700">NPTEL | IIT Kharagpur</p>
+                </div>
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">Soft Skills</h3>
+                    <p class="text-sm text-green-700">NPTEL | IIT Roorkee</p>
+                </div>
+                <div class="bg-green-50 border-l-4 border-green-500 p-5 rounded-lg shadow transition-all hover:shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-900">Programming in Java</h3>
+                    <p class="text-sm text-green-700">NPTEL | IIT Kharagpur</p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Section 5: Journey & Timeline (Improved UI) -->
+        <section id="journey" class="space-y-6">
+            <div class="border-b-2 border-indigo-100 pb-3 flex justify-between items-end">
+                <h2 class="text-3xl font-bold text-slate-900">Education & Trajectory</h2>
+                <button id="toggle-future" class="px-3 py-1 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-full hover:bg-indigo-100 transition-colors focus:outline-none">
+                    Hide Future Goals
+                </button>
+            </div>
+
+             <!-- Context Paragraph -->
+             <p class="text-slate-600 max-w-4xl">
+                This timeline outlines my academic path and career aspirations. It details my current degree progress and the milestones I aim to achieve in the near future. Use the toggle above to hide/show future aspirations.
+            </p>
+
+            <div class="relative border-l-4 border-slate-300 ml-4 space-y-10 py-4">
+                
+                <!-- Timeline Item 1 -->
+                <div class="relative pl-10 group">
+                    <div class="absolute -left-5 mt-1.5 h-10 w-10 rounded-full border-4 border-white bg-green-600 shadow-lg flex items-center justify-center text-white font-bold transition-all group-hover:scale-105">✅</div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl shadow-md border-l-4 border-green-600">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900">Bachelor of Computer Applications (BCA)</h3>
+                            <p class="text-green-600 font-medium">University of Engineering & Management, Kolkata</p>
+                        </div>
+                        <!-- UPDATED COMPLETION DATE AND STATUS -->
+                        <span class="text-sm text-slate-600 bg-green-100 px-3 py-1 rounded-full mt-2 sm:mt-0 whitespace-nowrap">Completed: Aug 2022 – July 2025</span>
+                    </div>
+                    <div class="mt-3 text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm">
+                        <p>Successfully completed the BCA degree in July 2025. Maintained a strong academic record with a <strong>CGPA of 8.81</strong>. Core courses included:</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="text-xs font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">OS</span>
+                            <span class="text-xs font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">DBMS</span>
+                            <span class="text-xs font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Networking</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 2 (Future/Goal) - Now focused on MCA -->
+                <div id="future-goals-content" class="future-goal-wrapper" style="max-height: fit-content; opacity: 1;">
+                    <div class="relative pl-10 group pt-10">
+                        <div class="absolute -left-5 mt-1.5 h-10 w-10 rounded-full border-4 border-white bg-indigo-500 shadow-lg flex items-center justify-center text-white font-bold transition-all group-hover:scale-105">📚</div>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl shadow-md border-l-4 border-indigo-500">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Master of Computer Applications (MCA)</h3>
+                                <p class="text-indigo-600 font-medium">Immediate Educational Focus</p>
+                            </div>
+                            <span class="text-sm text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full mt-2 sm:mt-0 whitespace-nowrap">Current Goal</span>
+                        </div>
+                        <div class="mt-3 text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm">
+                            <p>Immediate goal is to secure admission into a competitive MCA program. This step is aimed at deepening theoretical knowledge in advanced computer science and systems, further solidifying the foundation laid during the BCA program.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Section 6: Connect Hub (Improved Buttons) -->
+        <section class="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl mb-12">
+            <div class="px-6 py-12 md:px-12 text-center md:text-left md:flex md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">Ready to collaborate?</h2>
+                    <p class="text-slate-300 text-lg">Find me on competitive platforms or connect professionally.</p>
+                </div>
+                <div class="mt-8 md:mt-0 flex flex-wrap justify-center md:justify-end gap-4">
+                    <!-- LinkedIn Button with Haptic Effect -->
+                    <a href="https://www.linkedin.com/in/mdtausifhussain/" target="_blank" class="haptic-button-effect px-6 py-3 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-500 transition-all transform hover:-translate-y-1 flex items-center" onclick="simulateHapticFeedback(this, event)">
+                        <span class="text-xl mr-2">&#128279;</span> <!-- Link Icon Unicode -->
+                        LinkedIn
+                    </a>
+                    <!-- GitHub Button with Haptic Effect -->
+                    <a href="https://github.com/Md-Tausif-Hussain" target="_blank" class="haptic-button-effect px-6 py-3 bg-white text-gray-800 font-semibold rounded-full shadow-lg hover:bg-gray-200 transition-all transform hover:-translate-y-1 flex items-center" onclick="simulateHapticFeedback(this, event)">
+                        <span class="text-xl mr-2">&#9733;</span> <!-- Star Icon Unicode -->
+                        GitHub
+                    </a>
+                    <!-- LeetCode Button with Haptic Effect -->
+                    <a href="https://leetcode.com/u/Tausif_21/" target="_blank" class="haptic-button-effect px-6 py-3 bg-yellow-500 text-slate-900 font-semibold rounded-full shadow-lg hover:bg-yellow-400 transition-all transform hover:-translate-y-1 flex items-center" onclick="simulateHapticFeedback(this, event)">
+                        <span class="text-xl mr-2">🎯</span> <!-- Target Icon Unicode -->
+                        LeetCode
+                    </a>
+                </div>
+            </div>
+            <!-- Platform Stats Mini-Bar (FIXED: Converted spans to links) -->
+            <div class="bg-slate-800 px-6 py-4 md:px-12 flex flex-wrap gap-x-8 gap-y-2 justify-center md:justify-start text-xs text-slate-400 border-t border-slate-700">
+                <a href="https://codeforces.com/profile/Tausif_21" target="_blank" class="hover:text-white transition-colors cursor-pointer">Codeforces: Tausif_21</a>
+                <span class="text-slate-700 hidden sm:inline">|</span>
+                <a href="https://www.geeksforgeeks.org/user/tausifh21/" target="_blank" class="hover:text-white transition-colors cursor-pointer">GeeksforGeeks: tausifh21</a>
+                <span class="text-slate-700 hidden sm:inline">|</span>
+                <a href="https://unstop.com/u/Tausif_21" target="_blank" class="hover:text-white transition-colors cursor-pointer">Unstop: Tausif_21</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-slate-500">
+                &copy; 2025 Md Tausif Hussain. Generated Interactive Report.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- State Management ---
+        const state = {
+            isFutureVisible: true, // UPDATED: Start expanded since graduation is complete
+            chartInstances: {},
+            isDragging: false, // New state for click/drag control
+            previousMousePosition: { x: 0, y: 0 },
+            mouseX: 0,
+            mouseY: 0,
+            clock: new THREE.Clock(),
+            // Tone.js Snap Synth Setup (Replaced complex Sampler with Noise Synth for reliability)
+            snapSynth: new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+            }).toDestination(),
+            
+            // Tone.js Haptic Synth Setup (original)
+            synth: new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination()
+        };
+
+        // --- Haptic Feedback Simulation (Auditory) ---
+        window.simulateHapticFeedback = function(element, event) {
+            // Prevent navigating if the user is just trying to activate the sound
+            if (event.type === 'click' && element.href) {
+                // Play sound immediately on user interaction
+                state.synth.triggerAttackRelease('C5', '8n');
+            }
+        };
+
+        // --- NEW: Hero Text Pulse Animation (Now Thanos Snap) ---
+        window.handleHeroClick = function(element) {
+            // 1. Check if an animation is already running to prevent spamming
+            if (element.classList.contains('animating')) return;
+            element.classList.add('animating');
+            
+            // Play snap sound
+            state.snapSynth.triggerAttackRelease('8n', Tone.now(), 0.5);
+
+            // 2. Clone the content and get its bounding box
+            const rect = element.getBoundingClientRect();
+            // Get the entire HTML content to clone the structure and text
+            const originalContentHTML = element.innerHTML;
+            
+            // 3. Temporarily hide the original content
+            element.innerHTML = '';
+            element.style.opacity = '0';
+            
+            // 4. Create particle container and add it to the body (to enable z-index/absolute positioning over everything)
+            const particleContainer = document.createElement('div');
+            particleContainer.style.position = 'absolute';
+            particleContainer.style.top = `${rect.top + window.scrollY}px`;
+            particleContainer.style.left = `${rect.left + window.scrollX}px`;
+            particleContainer.style.width = `${rect.width}px`;
+            particleContainer.style.height = `${rect.height}px`;
+            particleContainer.style.overflow = 'hidden';
+            particleContainer.style.pointerEvents = 'none'; // Don't block interactions
+            document.body.appendChild(particleContainer);
+
+            // Create temporary element to hold the original content structure for particle generation
+            const tempElement = document.createElement('div');
+            tempElement.innerHTML = originalContentHTML;
+            tempElement.style.position = 'absolute';
+            tempElement.style.width = '100%';
+            tempElement.style.height = '100%';
+            particleContainer.appendChild(tempElement);
+
+            // Function to recursively find text nodes and convert letters to particles
+            function processNode(node) {
+                if (node.nodeType === 3) { // Text Node
+                    const text = node.textContent;
+                    const parent = node.parentNode;
+                    const fragment = document.createDocumentFragment();
+
+                    for (let char of text) {
+                        const particle = document.createElement('span');
+                        particle.className = 'particle';
+                        particle.textContent = char;
+                        
+                        // Set animation properties
+                        const duration = Math.random() * 1.0 + 1.0; // 1.0s to 2.0s
+                        const delay = Math.random() * 0.5;
+                        const endY = (Math.random() * 200) * (Math.random() > 0.5 ? 1 : -1); 
+                        const endX = (Math.random() * 200) * (Math.random() > 0.5 ? 1 : -1);
+
+                        // Use a small character for dust if the original is just whitespace
+                        if (char.trim() === '') {
+                             particle.textContent = ['*', '.', ',', '•'][Math.floor(Math.random() * 4)];
+                             particle.style.fontSize = `${Math.random() * 2 + 1}px`;
+                             particle.style.color = '#94a3b8'; // Slate 400 for dust
+                        }
+                        
+                        particle.style.animation = `snap-disintegrate ${duration}s ease-out forwards`;
+                        particle.style.animationDelay = `${delay}s`;
+                        particle.style.display = 'inline-block';
+                        // Apply random translation and rotation at the end state
+                        particle.style.setProperty('animation-name', 'snap-disintegrate');
+                        particle.style.setProperty('animation-duration', `${duration}s`);
+                        particle.style.setProperty('animation-delay', `${delay}s`);
+                        particle.style.setProperty('animation-fill-mode', 'forwards');
+                        particle.style.setProperty('animation-timing-function', 'ease-out');
+                        
+                        // Overwrite the CSS animation end state for better dispersion
+                        particle.style.setProperty('transform', `translate(${endX}px, ${endY}px) rotate(${Math.random() * 360}deg)`);
+
+                        fragment.appendChild(particle);
+                    }
+
+                    parent.replaceChild(fragment, node);
+                } else if (node.nodeType === 1) { // Element Node
+                    Array.from(node.childNodes).forEach(processNode);
+                }
+            }
+
+            // Start processing the cloned content
+            Array.from(tempElement.childNodes).forEach(processNode);
+            
+            // 6. Restore the content and clean up after animation
+            setTimeout(() => {
+                particleContainer.remove(); 
+                element.innerHTML = originalContentHTML;
+                element.style.opacity = '1';
+                element.classList.remove('animating');
+            }, 2500); // Give particles time to dust away
+        };
+
+
+        // --- Data Store ---
+        const profileData = {
+            skills: {
+                labels: ['Java', 'C++', 'Python', 'DSA', 'OOPS', 'Problem Solving', 'Git', 'Collaboration', 'Communication'],
+                data: [90, 85, 75, 95, 88, 92, 80, 90, 85] 
+            },
+            languages: {
+                labels: ['Java', 'C++', 'Python', 'C', 'Other'],
+                data: [35, 25, 20, 15, 5], 
+                colors: ['#0ea5e9', '#6366f1', '#eab308', '#64748b', '#cbd5e1']
+            },
+            projects: [
+                {
+                    name: 'GitHub-Trending-Scrapper',
+                    tech: 'Java, Jsoup, Libraries',
+                    link: '#',
+                    description: 'Developed a robust Java-based scraper to efficiently extract trending repositories from GitHub. Key functions included parsing, structuring data (names, descriptions, and star counts), and utilizing external libraries (Jsoup) to improve parsing efficiency and reliability.'
+                },
+                {
+                    name: 'TODO - LIST Console Application',
+                    tech: 'Java, Console, ArrayList',
+                    link: '#',
+                    description: 'Built a core Java console application designed for task management, featuring simple, options to add, view, and delete tasks. The application utilizes a menu-driven interface for optimal user flow and leverages ArrayList for dynamic and clean task storage.'
+                }
+            ]
+        };
+
+        // --- Core Functions ---
+
+        window.scrollToSection = function(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function init() {
+            renderCharts();
+            renderProjects();
+            setupEventListeners();
+            
+            // FIX: Ensure Three.js setup runs only after the library is loaded
+            if (typeof THREE !== 'undefined') {
+                setupThreeD();
+            } else {
+                console.error("THREE.js library not loaded. Cannot initialize 3D scene.");
+            }
+            
+            renderLanguageBars(); // Initialize language bars for mobile view
+        }
+
+        function setupEventListeners() {
+            // Mobile Menu Toggle
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenuToggle && mobileMenu) {
+                mobileMenuToggle.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+                mobileMenu.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                    });
+                });
+            }
+
+            // Future Goals Toggle
+            const toggleBtn = document.getElementById('toggle-future');
+            const futureGoalWrapper = document.getElementById('future-goals-content');
+            
+            if (state.isFutureVisible) {
+                 futureGoalWrapper.style.maxHeight = 'fit-content';
+                 futureGoalWrapper.style.opacity = '1';
+                 toggleBtn.textContent = 'Hide Future Goals';
+            } else {
+                 futureGoalWrapper.style.maxHeight = '0px';
+                 futureGoalWrapper.style.opacity = '0';
+                 toggleBtn.textContent = 'Show Future Goals';
+            }
+
+            toggleBtn.addEventListener('click', () => {
+                const isExpanded = futureGoalWrapper.style.maxHeight !== '0px' && futureGoalWrapper.style.maxHeight !== '';
+                
+                if (isExpanded) {
+                    futureGoalWrapper.style.maxHeight = '0px';
+                    futureGoalWrapper.style.opacity = '0';
+                    toggleBtn.textContent = 'Show Future Goals';
+                } else {
+                    futureGoalWrapper.style.maxHeight = futureGoalWrapper.scrollHeight + 100 + 'px';
+                    futureGoalWrapper.style.opacity = '1';
+                    toggleBtn.textContent = 'Hide Future Goals';
+                    
+                    setTimeout(() => {
+                        futureGoalWrapper.style.maxHeight = 'fit-content';
+                    }, 500); 
+                }
+            });
+
+            // 3D Interaction: Mouse Down/Up/Move for Drag Rotation
+            const threeDContainer = document.getElementById('three-d-container');
+            if (threeDContainer) {
+                
+                const handleMouseDown = (e) => {
+                    state.isDragging = true;
+                    state.previousMousePosition.x = e.clientX;
+                    state.previousMousePosition.y = e.clientY;
+                    threeDContainer.classList.add('grabbing');
+                };
+
+                const handleMouseUp = () => {
+                    state.isDragging = false;
+                    threeDContainer.classList.remove('grabbing');
+                };
+
+                const handleMouseMove = (e) => {
+                    if (!state.isDragging) {
+                        // Passive tilt on hover when not dragging (retaining previous UX)
+                        const rect = threeDContainer.getBoundingClientRect();
+                        state.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                        state.mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                        return;
+                    }
+
+                    // Active rotation when dragging
+                    const deltaX = e.clientX - state.previousMousePosition.x;
+                    const deltaY = e.clientY - state.previousMousePosition.y;
+
+                    // Apply rotation based on mouse delta
+                    const sensitivity = 0.005;
+                    dodecahedron.rotation.y += deltaX * sensitivity;
+                    dodecahedron.rotation.x += deltaY * sensitivity;
+
+                    state.previousMousePosition.x = e.clientX;
+                    state.previousMousePosition.y = e.clientY;
+                };
+
+                threeDContainer.addEventListener('mousedown', handleMouseDown);
+                window.addEventListener('mouseup', handleMouseUp);
+                threeDContainer.addEventListener('mousemove', handleMouseMove);
+
+                // Touch support for mobile devices
+                threeDContainer.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); 
+                    handleMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                });
+
+                threeDContainer.addEventListener('touchend', handleMouseUp);
+
+                threeDContainer.addEventListener('touchmove', (e) => {
+                    e.preventDefault(); 
+                    handleMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                });
+            }
+        }
+        
+        function renderProjects() {
+            const container = document.getElementById('projects-container');
+            container.innerHTML = profileData.projects.map((project, index) => `
+                <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden transition-all hover:shadow-xl hover:border-indigo-300">
+                    <div class="p-5 flex flex-col">
+                        <h3 class="text-xl font-bold text-slate-900">${project.name}</h3>
+                        <div class="text-sm text-indigo-600 font-medium mt-1">${project.tech}</div>
+                        <div class="mt-4">
+                            <button data-project-index="${index}" class="toggle-project-btn px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors flex items-center">
+                                View Details 
+                                <span class="ml-2">&#x25BC;</span>
+                            </button>
+                        </div>
+                        
+                        <div id="project-details-${index}" class="project-details" style="max-height: 0;">
+                            <div class="pt-4 mt-4 border-t border-slate-100 text-sm text-slate-600">
+                                ${project.description}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.toggle-project-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const buttonEl = e.currentTarget; 
+                    const index = buttonEl.dataset.projectIndex;
+                    const detailsDiv = document.getElementById(`project-details-${index}`);
+                    const spanIcon = buttonEl.querySelector('span'); 
+                    
+                    if (detailsDiv.style.maxHeight === '0px' || detailsDiv.style.maxHeight === '') {
+                        detailsDiv.style.maxHeight = detailsDiv.scrollHeight + 'px';
+                        if(spanIcon) spanIcon.innerHTML = '&#x25B2;'; 
+                    } else {
+                        detailsDiv.style.maxHeight = '0px';
+                        if(spanIcon) spanIcon.innerHTML = '&#x25BC;'; 
+                    }
+                });
+            });
+        }
+
+        // --- NEW: Language Bar Rendering for Fluid Mobile UI ---
+        function renderLanguageBars() {
+            const barsContainer = document.getElementById('language-bars');
+            const { labels, data, colors } = profileData.languages;
+
+            let html = labels.map((label, index) => {
+                const percentage = data[index];
+                const color = colors[index];
+                
+                // Convert hex color to Tailwind class equivalent for background
+                // Note: Direct color mapping is complex, using inline style for fill for accuracy
+                const barHtml = `
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm font-medium text-slate-700">
+                            <span>${label}</span>
+                            <span>${percentage}%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5 mt-1 overflow-hidden">
+                            <div id="bar-${label.replace(/\s/g, '-')}" class="progress-bar-fill h-2.5 rounded-full" style="background-color: ${color}; width: 0%;"></div>
+                        </div>
+                    </div>
+                `;
+                return barHtml;
+            }).join('');
+
+            barsContainer.innerHTML = html;
+
+            // Trigger animation after DOM insertion
+            setTimeout(() => {
+                labels.forEach((label, index) => {
+                    const barId = `bar-${label.replace(/\s/g, '-')}`;
+                    const barElement = document.getElementById(barId);
+                    if (barElement) {
+                        barElement.style.width = `${data[index]}%`;
+                    }
+                });
+            }, 100); 
+        }
+
+        // --- Three.js Logic ---
+        let scene, camera, renderer, dodecahedron;
+        const threeDContainer = document.getElementById('three-d-container');
+
+        let originalVertices = [];
+
+        function setupThreeD() {
+            if (!threeDContainer) return;
+
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, threeDContainer.clientWidth / threeDContainer.clientHeight, 0.1, 1000);
+            camera.position.z = 2;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(threeDContainer.clientWidth, threeDContainer.clientHeight);
+            threeDContainer.appendChild(renderer.domElement);
+            
+            window.addEventListener('resize', onThreeDResize);
+
+            const geometry = new THREE.IcosahedronGeometry(1.0, 1); 
+            
+            const positions = geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = positions[i];
+                const y = positions[i + 1];
+                const z = positions[i + 2];
+                originalVertices.push(new THREE.Vector3(x, y, z));
+            }
+
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x6366f1, 
+                specular: 0xcccccc, 
+                shininess: 30,
+                wireframe: true, 
+                transparent: true,
+                opacity: 0.8
+            });
+            dodecahedron = new THREE.Mesh(geometry, material);
+            scene.add(dodecahedron);
+
+            const ambientLight = new THREE.AmbientLight(0x404040); 
+            scene.add(ambientLight);
+            
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.7);
+            directionalLight1.position.set(5, 5, 5);
+            scene.add(directionalLight1);
+            
+            animateThreeD();
+        }
+        
+        function onThreeDResize() {
+            if (threeDContainer && renderer && camera) {
+                const width = threeDContainer.clientWidth;
+                const height = threeDContainer.clientHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+        }
+
+        function animateThreeD() {
+            if (renderer) {
+                requestAnimationFrame(animateThreeD);
+            
+                const delta = state.clock.getDelta();
+                const time = state.clock.getElapsedTime();
+                
+                if (!state.isDragging) {
+                    dodecahedron.rotation.x += 0.1 * delta;
+                    dodecahedron.rotation.y += 0.1 * delta;
+
+                    dodecahedron.rotation.x += (state.mouseY * 0.02 - dodecahedron.rotation.x) * 0.1;
+                    dodecahedron.rotation.y += (state.mouseX * 0.02 - dodecahedron.rotation.y) * 0.1;
+                }
+
+                // EXPLOSION EFFECT: Radial vertex displacement (always active)
+                const positionAttribute = dodecahedron.geometry.attributes.position;
+                const positions = positionAttribute.array;
+                
+                const displacementStrength = (Math.sin(time * 0.5) + 1) * 0.05 + 0.02; 
+
+                for (let i = 0; i < originalVertices.length; i++) {
+                    const original = originalVertices[i];
+                    const displacement = original.clone().normalize().multiplyScalar(displacementStrength);
+
+                    positions[i * 3] = original.x + displacement.x;
+                    positions[i * 3 + 1] = original.y + displacement.y;
+                    positions[i * 3 + 2] = original.z + displacement.z;
+                }
+
+                positionAttribute.needsUpdate = true; 
+
+                renderer.render(scene, camera);
+            }
+        }
+
+        // --- Chart Rendering using Chart.js ---
+
+        function renderCharts() {
+            // 1. Radar Chart for Skills
+            const ctxRadar = document.getElementById('skillsRadarChart').getContext('2d');
+            
+            if (state.chartInstances.radar) state.chartInstances.radar.destroy();
+
+            state.chartInstances.radar = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: profileData.skills.labels,
+                    datasets: [{
+                        label: 'Skill Proficiency Score',
+                        data: profileData.skills.data,
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)', 
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#e2e8f0' },
+                            grid: { color: '#e2e8f0' },
+                            pointLabels: {
+                                font: { size: 12, family: "'Inter', sans-serif" },
+                                color: '#475569'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    label += context.parsed.r + '/100';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 2. Doughnut Chart for Languages (Desktop Only)
+            const ctxDoughnut = document.getElementById('languageDoughnutChart').getContext('2d');
+            if (state.chartInstances.doughnut) state.chartInstances.doughnut.destroy();
+
+            state.chartInstances.doughnut = new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: profileData.languages.labels,
+                    datasets: [{
+                        label: 'Codebase %',
+                        data: profileData.languages.data,
+                        backgroundColor: profileData.languages.colors, 
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            const label = profileData.languages.labels[index];
+                            const value = profileData.languages.data[index];
+                            updateInsightText(label, value);
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateInsightText(tech, percentage) {
+            const insightBox = document.getElementById('skill-insight');
+            const textEl = insightBox.querySelector('p');
+            
+            insightBox.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                let message = "";
+                if (tech === 'Java') message = `<strong>Java (${percentage}%)</strong> is my primary language for Object-Oriented Programming and backend logic.`;
+                else if (tech === 'C++') message = `<strong>C++ (${percentage}%)</strong> is my go-to for performance-critical tasks and Competitive Programming.`;
+                else if (tech === 'Python') message = `<strong>Python (${percentage}%)</strong> powers my scripting, data analysis, and rapid prototyping needs.`;
+                else if (tech === 'C') message = `<strong>C (${percentage}%)</strong> forms the fundamental basis of my systems programming understanding.`;
+                else message = `<strong>${tech} (${percentage}%)</strong> represents a supportive part of my technical stack, demonstrating versatility.`;
+
+                textEl.innerHTML = `<strong>Analyst Note:</strong> ${message}`;
+                insightBox.style.opacity = '1';
+            }, 200);
+        }
+
+        window.onload = function () {
+            init();
+        }
+
+    </script>
+</body>
+</html>
